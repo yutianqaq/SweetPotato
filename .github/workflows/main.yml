@@ -1,0 +1,63 @@
+name: .NET Core Desktop
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    strategy:
+      matrix:
+        configuration: [Release]
+
+    runs-on: windows-2019  # For a list of available runner types, refer to https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
+                             # 貌似.net framework(不是core)需要windows-2019
+
+    env:
+      Solution_Name: SweetPotato                         # Replace with your solution name, i.e. MyWpfApp.sln.
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    # Install the .NET Core workload
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+
+    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    # Nuget
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.1.1
+
+    - name: Restore NuGet Packages
+      run: nuget restore ${{ github.workspace }}\SweetPotato.sln
+
+    # Restore the application to populate the obj folder with RuntimeIdentifiers
+    - name: Restore the application
+      run: msbuild ${{ github.workspace }}\SweetPotato.csproj
+      env:
+        Configuration: ${{ matrix.configuration }}
+
+    # Upload the MSIX package: https://github.com/marketplace/actions/upload-a-build-artifact
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: SweetPotato
+        path: bin\Release\
+
+    # Some Refs:
+    # https://developercommunity.visualstudio.com/t/windows-2019-agents-wont-build-projects-built-by-w/1692735
+    # https://timheuer.com/blog/building-net-framework-apps-using-github-actions/
+    # https://github.com/actions/runner-images/tree/main/images/win
+    # https://learn.microsoft.com/zh-cn/nuget/consume-packages/package-restore
